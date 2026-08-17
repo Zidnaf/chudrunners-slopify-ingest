@@ -1,4 +1,4 @@
-name: Slopify YouTube Ingest
+name: Slopify Cobalt Ingest
 
 on:
   repository_dispatch:
@@ -22,69 +22,25 @@ jobs:
       GENRE: ${{ github.event.client_payload.genre }}
       CALLBACK_URL: ${{ github.event.client_payload.callback_url }}
       CALLBACK_TOKEN: ${{ secrets.SLOPIFY_CALLBACK_TOKEN }}
-      MAX_DURATION: "900"
+
+      # Optional per-instance Authorization header values.
+      # Leave these secrets absent unless an instance owner gives you one.
+      COBALT_BERGUNG_AUTH: ${{ secrets.COBALT_BERGUNG_AUTH }}
+      COBALT_MELON_AUTH: ${{ secrets.COBALT_MELON_AUTH }}
+      COBALT_MGYTR_AUTH: ${{ secrets.COBALT_MGYTR_AUTH }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Slopify YouTube stack
+      - name: Install Slopify tools
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg jq git
+          sudo apt-get install -y jq ffmpeg
 
-          curl -fsSL https://deno.land/install.sh | sh
-          echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
-          export PATH="$HOME/.deno/bin:$PATH"
-
-          python3 -m pip install --upgrade "yt-dlp[default]"
-          python3 -m pip install --upgrade bgutil-ytdlp-pot-provider
-
-          git clone --depth 1 \
-            https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git \
-            "$HOME/bgutil-ytdlp-pot-provider"
-
-          cd "$HOME/bgutil-ytdlp-pot-provider/server"
-          deno install --allow-scripts=npm:canvas --frozen
-
-      - name: Verify yt-dlp PO provider
+      - name: Resolve through approved Cobalt pool and upload
         shell: bash
         run: |
-          export PATH="$HOME/.deno/bin:$PATH"
-          yt-dlp --version
-          deno --version
-          python3 -m pip show bgutil-ytdlp-pot-provider
-
-      - name: Download, convert, and return audio
-        shell: bash
-        run: |
-          export PATH="$HOME/.deno/bin:$PATH"
-
           chmod +x scripts/slopify_ingest.sh
-
-          cd "$HOME/bgutil-ytdlp-pot-provider/server/node_modules"
-
-          deno run \
-            --allow-env \
-            --allow-net \
-            --allow-ffi=. \
-            --allow-read=. \
-            ../src/main.ts \
-            > /tmp/slopify-pot.log 2>&1 &
-
-          POT_PID=$!
-
-          sleep 5
-
-          curl --fail --silent http://127.0.0.1:4416/ping > /dev/null || {
-            echo "PO Token provider failed to start"
-            cat /tmp/slopify-pot.log
-            exit 1
-          }
-
-          cd "$GITHUB_WORKSPACE"
-
           scripts/slopify_ingest.sh
-
-          kill "$POT_PID" || true
