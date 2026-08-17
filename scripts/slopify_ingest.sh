@@ -57,6 +57,7 @@ api_post status '{"status":"extracting","message":"Reading YouTube metadata..."}
 
 yt-dlp \
   --no-playlist \
+  --extractor-args "youtube:player_client=mweb" \
   --skip-download \
   --dump-single-json \
   "$YOUTUBE_URL" \
@@ -88,6 +89,7 @@ api_post status '{"status":"downloading","message":"Downloading YouTube audio...
 
 yt-dlp \
   --no-playlist \
+  --extractor-args "youtube:player_client=mweb" \
   -f "bestaudio/best" \
   -x \
   --audio-format vorbis \
