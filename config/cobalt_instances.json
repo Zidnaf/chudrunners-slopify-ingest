@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Bergung",
+    "url": "https://bergung-api.hoffnungfuerdiezukunft.net",
+    "enabled": true
+  },
+  {
+    "name": "Melon",
+    "url": "https://melon.clxxped.lol",
+    "enabled": true
+  },
+  {
+    "name": "MGYTR",
+    "url": "https://apicobalt.mgytr.top",
+    "enabled": true
+  }
+]
