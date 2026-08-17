@@ -1,0 +1,42 @@
+name: Slopify YouTube Ingest
+
+on:
+  repository_dispatch:
+    types: [slopify_ingest]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: slopify-${{ github.event.client_payload.job_id }}
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      JOB_ID: ${{ github.event.client_payload.job_id }}
+      YOUTUBE_URL: ${{ github.event.client_payload.url }}
+      GENRE: ${{ github.event.client_payload.genre }}
+      CALLBACK_URL: ${{ github.event.client_payload.callback_url }}
+      CALLBACK_TOKEN: ${{ secrets.SLOPIFY_CALLBACK_TOKEN }}
+      MAX_DURATION: "900"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ffmpeg and yt-dlp
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg jq
+          python3 -m pip install --upgrade yt-dlp
+
+      - name: Download, convert, and return audio
+        shell: bash
+        run: |
+          chmod +x scripts/slopify_ingest.sh
+          scripts/slopify_ingest.sh
