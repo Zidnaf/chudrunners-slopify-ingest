@@ -28,17 +28,63 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install ffmpeg, Deno, and yt-dlp
+      - name: Install Slopify YouTube stack
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg jq
+          sudo apt-get install -y ffmpeg jq git
+
           curl -fsSL https://deno.land/install.sh | sh
           echo "$HOME/.deno/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.deno/bin:$PATH"
+
           python3 -m pip install --upgrade "yt-dlp[default]"
+          python3 -m pip install --upgrade bgutil-ytdlp-pot-provider
+
+          git clone --depth 1 \
+            https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git \
+            "$HOME/bgutil-ytdlp-pot-provider"
+
+          cd "$HOME/bgutil-ytdlp-pot-provider/server"
+          deno install --allow-scripts=npm:canvas --frozen
+
+      - name: Verify yt-dlp PO provider
+        shell: bash
+        run: |
+          export PATH="$HOME/.deno/bin:$PATH"
+          yt-dlp --version
+          deno --version
+          python3 -m pip show bgutil-ytdlp-pot-provider
 
       - name: Download, convert, and return audio
         shell: bash
         run: |
+          export PATH="$HOME/.deno/bin:$PATH"
+
           chmod +x scripts/slopify_ingest.sh
+
+          cd "$HOME/bgutil-ytdlp-pot-provider/server"
+
+          deno run \
+            --allow-env \
+            --allow-net \
+            --allow-ffi=. \
+            --allow-read=. \
+            ../src/main.ts \
+            > /tmp/slopify-pot.log 2>&1 &
+
+          POT_PID=$!
+
+          sleep 4
+
+          curl --fail --silent http://127.0.0.1:4416/ > /dev/null || {
+            echo "PO Token provider failed to start"
+            cat /tmp/slopify-pot.log
+            exit 1
+          }
+
+          cd "$GITHUB_WORKSPACE"
+
           scripts/slopify_ingest.sh
+
+          kill "$POT_PID" || true
